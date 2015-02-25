@@ -510,10 +510,11 @@ func (c *Client) IsEncrypted() bool {
 
 // Chat is an incoming or outgoing XMPP chat message.
 type Chat struct {
-	Remote string
-	Type   string
-	Text   string
-	Other  []string
+	Remote    string
+	Type      string
+	Text      string
+	Timestamp string
+	Other     []string
 }
 
 // Presence is an XMPP presence notification.
@@ -534,7 +535,7 @@ func (c *Client) Recv() (stanza interface{}, err error) {
 		}
 		switch v := val.(type) {
 		case *clientMessage:
-			return Chat{v.From, v.Type, v.Body, v.Other}, nil
+			return Chat{v.From, v.Type, v.Body, v.Delay.Timestamp, v.Other}, nil
 		case *clientPresence:
 			return Presence{v.From, v.To, v.Type, v.Show}, nil
 		}
@@ -640,6 +641,10 @@ type clientMessage struct {
 	Body    string `xml:"body"`
 	Thread  string `xml:"thread"`
 
+	// Servers MAY provide some chat history in MUCs. Those messages carry their
+	// original timestamp in a delay tag.
+	Delay clientMessageDelay `xml:"urn:xmpp:delay delay,omitempty"`
+
 	// Any hasn't matched element
 	Other []string `xml:",any"`
 }
@@ -679,6 +684,13 @@ type clientError struct {
 	Type    string   `xml:",attr"`
 	Any     xml.Name
 	Text    string
+}
+
+// XEP-0045 7.2.14
+type clientMessageDelay struct {
+	XMLName   xml.Name `xml:"urn:xmpp:delay delay"`
+	Timestamp string   `xml:"stamp,attr"`
+	From      string   `xml:"from,attr"`
 }
 
 // Scan XML token stream to find next StartElement.
